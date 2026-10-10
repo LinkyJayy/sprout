@@ -105,7 +105,7 @@ export async function accountView(main) {
           ${isOwner() ? `<span class="badge badge-accent">${icon("crown")}&nbsp;Owner</span>` : `<span class="badge">Reader</span>`}
           <span>Member since ${esc(fullDate(u.createdAt).split(" at ")[0])}</span>
         </div>
-        <div class="notice">${icon("sparkles")}<span>AI summaries are unlocked on every article.${state.config?.aiEnabled ? "" : " (The server admin still needs to add an ANTHROPIC_API_KEY.)"}</span></div>
+        <div class="notice">${icon("sparkles")}<span>AI summaries are unlocked on every article.${state.config?.aiEnabled ? "" : " (The server admin still needs to add an GEMINI_API_KEY.)"}</span></div>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           ${isOwner() ? `<a class="btn btn-primary" href="/studio">${icon("grid")} Open Studio</a>` : ""}
           <button class="btn btn-danger" id="logout" type="button">${icon("logout")} Sign out</button>
