@@ -26,15 +26,15 @@ Open the app and click **Sign in → Create an account**. The first account beco
 ## Deploy to Railway
 
 1. Push this repo to GitHub, then in Railway choose **New Project → Deploy from GitHub repo**.
-2. Add a database so accounts and articles survive redeploys. Pick one:
-   - **Postgres (recommended):** add a PostgreSQL service and set `DATABASE_URL=${{Postgres.DATABASE_URL}}` on the Sprout service.
-   - **SQLite + Volume:** attach a Volume (for example at `/data`) and set `DATA_DIR=/data`.
+2. Add persistent storage so accounts and articles survive redeploys. Pick one:
+   - **Postgres (recommended):** click **+ New → Database → PostgreSQL**. Then, on the Sprout service's **Variables** tab, add `DATABASE_URL` with the value `${{Postgres.DATABASE_URL}}`.
+   - **SQLite + Volume:** right-click the Sprout service and choose **Attach Volume**, with a mount path like `/data`. Sprout detects the volume automatically through `RAILWAY_VOLUME_MOUNT_PATH`, so you don't need to set any variable.
 3. Set `GEMINI_API_KEY` to enable AI summaries. You can get a key from [Google AI Studio](https://aistudio.google.com/apikey).
 4. Under **Settings → Networking**, generate a domain.
 
 `railway.json` sets the start command and a health check at `/api/health`. `PORT` is read from the environment.
 
-> ⚠️ Without a database or volume, Railway's filesystem is wiped on every deploy, and accounts and articles go with it.
+> ⚠️ Without a database or volume, Railway's filesystem is wiped on every deploy, and accounts and articles go with it. Sprout logs a warning at startup when it detects this.
 
 ## Environment variables
 
@@ -44,7 +44,7 @@ Open the app and click **Sign in → Create an account**. The first account beco
 | `GEMINI_API_KEY` | Enables AI summaries. |
 | `GEMINI_MODEL` | Optional model override (default `gemini-flash-latest`). |
 | `DATABASE_URL` | Use PostgreSQL. If unset, SQLite is used. |
-| `DATA_DIR` | Where the SQLite file lives (default `./data`). |
+| `DATA_DIR` | Where the SQLite file lives. Defaults to an attached Railway Volume, then `./data`. |
 
 ## Project layout
 

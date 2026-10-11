@@ -1,6 +1,7 @@
 // Tiny database layer with one async API over two backends:
 //   - PostgreSQL when DATABASE_URL is set (recommended on Railway)
-//   - SQLite (better-sqlite3) otherwise, stored in DATA_DIR (default ./data)
+//   - SQLite (better-sqlite3) otherwise, stored in DATA_DIR, else an attached
+//     Railway Volume (RAILWAY_VOLUME_MOUNT_PATH), else ./data
 // SQL is written with `?` placeholders and converted for Postgres.
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -84,7 +85,13 @@ async function createPg(url) {
 
 async function createSqlite() {
   const { default: Database } = await import("better-sqlite3");
-  const dir = process.env.DATA_DIR || join(process.cwd(), "data");
+  const dir = process.env.DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH || join(process.cwd(), "data");
+  if (process.env.RAILWAY_ENVIRONMENT && !process.env.DATA_DIR && !process.env.RAILWAY_VOLUME_MOUNT_PATH) {
+    console.warn(
+      "[sprout] WARNING: no database or volume configured. Data is stored on Railway's temporary disk and " +
+        "will be ERASED on every deploy. Add a Postgres service (set DATABASE_URL) or attach a Volume."
+    );
+  }
   mkdirSync(dir, { recursive: true });
   const sqlite = new Database(join(dir, "sprout.db"));
   sqlite.pragma("journal_mode = WAL");
