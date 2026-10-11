@@ -19,7 +19,7 @@ import {
   verifyLogin,
 } from "./auth.js";
 import { extractArticle, getFeed, listSources, SOURCES } from "./sources.js";
-import { aiEnabled, summarizeArticle } from "./summarize.js";
+import { aiEnabled, getCachedSummary, summarizeArticle } from "./summarize.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const app = express();
@@ -214,11 +214,7 @@ app.get(
   "/api/articles/:slug",
   wrap(async (req, res) => {
     const a = await findArticle(req.params.slug, req);
-    let summary = null;
-    if (req.user) {
-      const s = await db.get("SELECT content FROM summaries WHERE article_id = ?", [a.id]);
-      summary = s?.content ?? null;
-    }
+    const summary = req.user ? await getCachedSummary(a) : null;
     res.json({
       article: { ...articleCard(a), sourceUrl: a.source_url, updatedAt: a.updated_at, html: renderMarkdown(a.body_md) },
       summary,

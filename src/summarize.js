@@ -8,15 +8,29 @@ const client = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.en
 export const aiEnabled = () => Boolean(client);
 
 const SYSTEM = `You summarize news articles for Sprout, a news app.
-Write a neutral, factual summary using only information in the article.
+Explain the story in your own words, the way a well-informed friend would retell it.
+Paraphrase everything: do not copy sentences or distinctive phrases from the article, and do not use direct quotes. Convey what people said in your own words instead (for example, "The mayor said the plan would cut costs").
+Stay neutral and factual, and use only information in the article. Keep names, numbers and dates accurate.
 Format: one short lead sentence, then 3-5 bullet points ("- ") covering the key facts, numbers, people and what happens next.
 No headings, no preamble, no opinions, under 160 words.`;
 
+// Bump when SYSTEM changes so previously cached summaries are regenerated.
+const PROMPT_VERSION = "2";
+
 const fail = (message, status) => Object.assign(new Error(message), { status });
 
-// Returns a cached summary when the article body hasn't changed; otherwise asks Gemini.
+const summaryHash = (article) =>
+  createHash("sha256").update(`${PROMPT_VERSION}\n${article.title}\n${article.body_md}`).digest("hex");
+
+// The saved summary, or null when there is none or it's out of date (article edited or prompt changed).
+export async function getCachedSummary(article) {
+  const row = await db.get("SELECT content, body_hash FROM summaries WHERE article_id = ?", [article.id]);
+  return row && row.body_hash === summaryHash(article) ? row.content : null;
+}
+
+// Returns a cached summary when it's still current; otherwise asks Gemini.
 export async function summarizeArticle(article) {
-  const bodyHash = createHash("sha256").update(`${article.title}\n${article.body_md}`).digest("hex");
+  const bodyHash = summaryHash(article);
   const cached = await db.get("SELECT * FROM summaries WHERE article_id = ?", [article.id]);
   if (cached && cached.body_hash === bodyHash) return { summary: cached.content, cached: true };
 
