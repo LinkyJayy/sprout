@@ -1,4 +1,4 @@
-import { api, state, isOwner } from "./api.js";
+import { api, state, isOwner, localDay } from "./api.js";
 import { esc, icon } from "./ui.js";
 import { homeView, searchView } from "./views/home.js";
 import { articleView } from "./views/article.js";
@@ -90,7 +90,14 @@ export function renderHeader() {
     return;
   }
   const initial = esc((u.name || u.email).trim()[0]?.toUpperCase() || "?");
+  const st = state.streak;
+  const streakPill = st
+    ? `<a href="/account" class="streak-pill ${st.readToday ? "lit" : st.current ? "at-risk" : ""}" title="${
+        st.readToday ? "You've read today. Streak safe!" : st.current ? "Read an article today to keep your streak" : "Read an article to start a streak"
+      }" aria-label="Reading streak: ${st.current} day${st.current === 1 ? "" : "s"}">${icon("flame")}<span>${st.current}</span></a>`
+    : "";
   slot.innerHTML = `
+    ${streakPill}
     <div class="account">
       <button class="avatar" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="Account menu">${initial}</button>
       <div class="menu" role="menu">
@@ -119,17 +126,33 @@ export function renderHeader() {
   slot.querySelector("[data-logout]").addEventListener("click", logout);
 }
 
+export async function refreshStreak() {
+  if (!state.user) return;
+  try {
+    ({ streak: state.streak } = await api(`/streak?today=${localDay()}`));
+    renderHeader();
+  } catch {}
+}
+
+export function setStreak(streak) {
+  state.streak = streak;
+  renderHeader();
+}
+
 export async function logout() {
   await api("/auth/logout", { method: "POST" }).catch(() => {});
   state.user = null;
+  state.streak = null;
   renderHeader();
   navigate("/");
 }
 
 export function setUser(user) {
   state.user = user;
+  state.streak = null;
   if (state.config) state.config.hasOwner = state.config.hasOwner || user?.role === "owner";
   renderHeader();
+  refreshStreak();
 }
 
 // ───────── PWA ─────────
@@ -152,4 +175,5 @@ window.addEventListener("beforeinstallprompt", (e) => {
   }
   renderHeader();
   render();
+  refreshStreak();
 })();

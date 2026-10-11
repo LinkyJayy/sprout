@@ -1,5 +1,5 @@
 // Small fetch wrapper + shared app state.
-export const state = { user: null, config: null };
+export const state = { user: null, config: null, streak: null };
 
 export async function api(path, { method = "GET", body } = {}) {
   const res = await fetch(`/api${path}`, {
@@ -21,3 +21,9 @@ export async function api(path, { method = "GET", body } = {}) {
 }
 
 export const isOwner = () => state.user?.role === "owner";
+
+// The reader's local calendar date (YYYY-MM-DD), so streaks follow their timezone.
+export function localDay(d = new Date()) {
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}

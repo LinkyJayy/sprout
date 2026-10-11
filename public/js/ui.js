@@ -24,14 +24,15 @@ const PATHS = {
   alert: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>',
   refresh: '<path d="M21 12a9 9 0 1 1-2.6-6.4L21 8"/><path d="M21 3v5h-5"/>',
   lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  flame: '<path d="M12 22c4.4 0 7-2.9 7-6.6 0-3.4-2.2-5.6-3.8-7.4-.4 1.9-1.4 3-2.6 3.5.3-3.3-1-6.4-3.8-8.5.2 3.1-1.4 5.1-3 7C4.4 11.6 5 13.6 5 15.4 5 19.1 7.6 22 12 22z"/>',
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/>',
 };
 export const icon = (name) => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${PATHS[name] || ""}</svg>`;
 
 export function toast(message, type = "ok") {
   const el = document.createElement("div");
-  el.className = `toast ${type === "error" ? "error" : ""}`;
-  el.innerHTML = `${icon(type === "error" ? "alert" : "check")}<span>${esc(message)}</span>`;
+  el.className = `toast ${type === "error" ? "error" : type === "streak" ? "streak" : ""}`;
+  el.innerHTML = `${icon({ error: "alert", streak: "flame" }[type] || "check")}<span>${esc(message)}</span>`;
   document.getElementById("toasts").append(el);
   setTimeout(() => el.remove(), 3600);
 }

@@ -8,14 +8,21 @@ const client = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.en
 export const aiEnabled = () => Boolean(client);
 
 const SYSTEM = `You summarize news articles for Sprout, a news app.
-Explain the story in your own words, the way a well-informed friend would retell it.
-Paraphrase everything: do not copy sentences or distinctive phrases from the article, and do not use direct quotes. Convey what people said in your own words instead (for example, "The mayor said the plan would cut costs").
-Stay neutral and factual, and use only information in the article. Keep names, numbers and dates accurate.
-Format: one short lead sentence, then 3-5 bullet points ("- ") covering the key facts, numbers, people and what happens next.
-No headings, no preamble, no opinions, under 160 words.`;
+Write a short summary that anyone can read in about 15 seconds, like explaining the story to a busy friend.
+
+Format, exactly:
+- First line: the gist in one short sentence (under 20 words).
+- Then 2-3 bullet points starting with "- ". Each bullet is one short sentence under 15 words.
+- Under 70 words in total. No headings, no preamble, no bold, no closing line.
+
+Style:
+- Use plain, everyday words and short sentences. Skip jargon; if a technical term or acronym is essential, explain it in a few words.
+- Put the most important facts first: what happened, who it affects, and what happens next.
+- Explain the story in your own words. Do not copy sentences or distinctive phrases from the article, and do not use direct quotes; convey what people said in your own words instead.
+- Stay neutral and factual, use only information in the article, and keep names, numbers and dates accurate.`;
 
 // Bump when SYSTEM changes so previously cached summaries are regenerated.
-const PROMPT_VERSION = "2";
+const PROMPT_VERSION = "3";
 
 const fail = (message, status) => Object.assign(new Error(message), { status });
 

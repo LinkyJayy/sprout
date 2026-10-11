@@ -44,6 +44,12 @@ const SCHEMA = (pg) => {
       created_by INTEGER REFERENCES users(id) ON DELETE SET NULL
     )`,
     `CREATE INDEX IF NOT EXISTS articles_published ON articles(status, published_at)`,
+    // One row per user per local calendar day they read an article; drives reading streaks.
+    `CREATE TABLE IF NOT EXISTS reading_days (
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      day TEXT NOT NULL,
+      PRIMARY KEY (user_id, day)
+    )`,
     `CREATE TABLE IF NOT EXISTS summaries (
       article_id INTEGER PRIMARY KEY REFERENCES articles(id) ON DELETE CASCADE,
       content TEXT NOT NULL,

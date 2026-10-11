@@ -1,5 +1,5 @@
 // Sprout service worker: offline app shell + network-first API with cached fallback.
-const VERSION = "sprout-v1";
+const VERSION = "sprout-v2";
 const SHELL = [
   "/",
   "/css/app.css",

@@ -1,4 +1,5 @@
-import { api, state, isOwner } from "../api.js";
+import { api, state, isOwner, localDay } from "../api.js";
+import { setStreak } from "../app.js";
 import { esc, icon, fullDate, timeAgo, toast, sourceLabel } from "../ui.js";
 
 // Renders the model's plain-text summary (lead sentence + "- " bullets) as safe HTML.
@@ -15,7 +16,8 @@ function summaryHTML(text) {
     } else {
       if (inList) html += "</ul>";
       inList = false;
-      html += `<p>${esc(line.replace(/\*\*(.+?)\*\*/g, "$1"))}</p>`;
+      const cls = html ? "" : ' class="ai-lead"'; // first line is the one-sentence gist
+      html += `<p${cls}>${esc(line.replace(/\*\*(.+?)\*\*/g, "$1"))}</p>`;
     }
   }
   return inList ? `${html}</ul>` : html;
@@ -103,6 +105,8 @@ export async function articleView(main, { params, isCurrent }) {
       }
     </article>`;
 
+  if (state.user && a.status === "published") recordStreak(slug);
+
   main.querySelector("#share").addEventListener("click", async () => {
     const url = location.href;
     if (navigator.share) {
@@ -130,4 +134,17 @@ export async function articleView(main, { params, isCurrent }) {
       btn.innerHTML = `${icon("refresh")} Try again`;
     }
   });
+}
+
+// Counts today toward the reader's streak and celebrates the first read of the day.
+async function recordStreak(slug) {
+  try {
+    const { streak } = await api("/streak/read", { method: "POST", body: { slug, today: localDay() } });
+    const { increased, ...current } = streak;
+    if (JSON.stringify(current) !== JSON.stringify(state.streak)) setStreak(current);
+    if (increased) {
+      const n = streak.current;
+      toast(n === 1 ? "Streak started! Come back tomorrow to keep it growing." : `${n}-day reading streak! Keep it up.`, "streak");
+    }
+  } catch {}
 }

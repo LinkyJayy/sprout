@@ -3,7 +3,8 @@
 A clean, modern news app with AI summaries. It installs as a PWA and deploys to Railway.
 
 - **Read freely.** You don't need an account to browse or read.
-- **AI summaries for members.** Signed-in readers get a one-tap AI summary at the top of every article. Summaries are generated with Google Gemini and cached per article.
+- **AI summaries for members.** Signed-in readers get a one-tap, 15-second AI summary in plain language at the top of every article. Summaries are generated with Google Gemini and cached per article.
+- **Reading streaks.** Signed-in readers build a daily streak by reading at least one article a day, measured in their own timezone. A flame counter sits in the header, a toast celebrates each new day, and the Account page shows the current streak, a 7-day view, the longest streak and total days read.
 - **Owner studio.** The **first account ever created** becomes the owner. Only the owner can:
   - **Import** stories from **BBC News, CNN, CBS News or The New York Times**. Pick an outlet and section and browse its live headlines, or paste an article link. The story opens in the editor for review before you publish, and it always links back to the original.
   - **Write** original articles from scratch in Markdown, with a live preview.

@@ -20,6 +20,7 @@ import {
 } from "./auth.js";
 import { extractArticle, getFeed, listSources, SOURCES } from "./sources.js";
 import { aiEnabled, getCachedSummary, summarizeArticle } from "./summarize.js";
+import { getStreak, recordRead, resolveToday } from "./streaks.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const app = express();
@@ -178,6 +179,27 @@ app.post(
 );
 
 app.get("/api/me", (req, res) => res.json({ user: publicUser(req.user) }));
+
+// ---------- reading streaks ----------
+app.get(
+  "/api/streak",
+  requireUser,
+  wrap(async (req, res) => {
+    res.json({ streak: await getStreak(req.user.id, resolveToday(req.query.today)) });
+  })
+);
+
+app.post(
+  "/api/streak/read",
+  requireUser,
+  wrap(async (req, res) => {
+    // Only opening a real, published article counts toward the streak.
+    const slug = str(req.body?.slug, 200);
+    const article = slug && (await db.get("SELECT id FROM articles WHERE slug = ? AND status = 'published'", [slug]));
+    if (!article) throw httpError(404, "Article not found.");
+    res.json({ streak: await recordRead(req.user.id, resolveToday(req.body?.today)) });
+  })
+);
 
 // ---------- public articles ----------
 app.get(

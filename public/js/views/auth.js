@@ -1,6 +1,6 @@
-import { api, state, isOwner } from "../api.js";
+import { api, state, isOwner, localDay } from "../api.js";
 import { esc, icon, fullDate, toast } from "../ui.js";
-import { navigate, setUser, logout } from "../app.js";
+import { navigate, setUser, setStreak, logout } from "../app.js";
 
 const safeNext = (q) => {
   const n = q.get("next") || "/";
@@ -96,6 +96,7 @@ export async function accountView(main) {
   main.innerHTML = `
     <div class="container narrow page fade-in">
       <h1 class="page-title" style="margin-bottom:22px">Account</h1>
+      <div id="streak-card"></div>
       <div class="panel panel-pad" style="display:grid;gap:18px">
         <div style="display:flex;align-items:center;gap:14px">
           <div class="avatar" style="width:52px;height:52px;font-size:20px;cursor:default">${esc(u.name.trim()[0]?.toUpperCase() || "?")}</div>
@@ -105,7 +106,7 @@ export async function accountView(main) {
           ${isOwner() ? `<span class="badge badge-accent">${icon("crown")}&nbsp;Owner</span>` : `<span class="badge">Reader</span>`}
           <span>Member since ${esc(fullDate(u.createdAt).split(" at ")[0])}</span>
         </div>
-        <div class="notice">${icon("sparkles")}<span>AI summaries are unlocked on every article.${state.config?.aiEnabled ? "" : " (The server admin still needs to add an GEMINI_API_KEY.)"}</span></div>
+        <div class="notice">${icon("sparkles")}<span>AI summaries are unlocked on every article.${state.config?.aiEnabled ? "" : " (The server admin still needs to add a GEMINI_API_KEY.)"}</span></div>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           ${isOwner() ? `<a class="btn btn-primary" href="/studio">${icon("grid")} Open Studio</a>` : ""}
           <button class="btn btn-danger" id="logout" type="button">${icon("logout")} Sign out</button>
@@ -113,4 +114,43 @@ export async function accountView(main) {
       </div>
     </div>`;
   main.querySelector("#logout").addEventListener("click", logout);
+
+  const card = main.querySelector("#streak-card");
+  if (state.streak) card.innerHTML = streakCardHTML(state.streak);
+  try {
+    const { streak } = await api(`/streak?today=${localDay()}`);
+    setStreak(streak);
+    card.innerHTML = streakCardHTML(streak);
+  } catch {}
+}
+
+function streakCardHTML(st) {
+  const message = st.readToday
+    ? "You've read today. Your streak is safe."
+    : st.current
+      ? "Read an article today to keep your streak alive."
+      : "Read an article to start a new streak.";
+  const weekday = (day) => new Date(`${day}T12:00:00`).toLocaleDateString(undefined, { weekday: "narrow" });
+  return `
+    <section class="streak-card panel panel-pad fade-in" aria-label="Reading streak">
+      <div class="streak-main">
+        <div class="streak-flame ${st.readToday ? "lit" : ""}">${icon("flame")}</div>
+        <div>
+          <div class="streak-count">${st.current} day${st.current === 1 ? "" : "s"}</div>
+          <div class="muted" style="font-size:13px">${message}</div>
+        </div>
+      </div>
+      <div class="streak-week" aria-label="Last 7 days">
+        ${st.week
+          .map(
+            (d, i) =>
+              `<div class="streak-day ${d.read ? "read" : ""} ${i === 6 ? "today" : ""}" title="${esc(d.day)}${d.read ? ": read" : ""}"><span class="dot">${d.read ? icon("check") : ""}</span><span class="lbl">${esc(weekday(d.day))}</span></div>`
+          )
+          .join("")}
+      </div>
+      <div class="streak-stats">
+        <div><strong>${st.longest}</strong><span>Longest streak</span></div>
+        <div><strong>${st.totalDays}</strong><span>Days read</span></div>
+      </div>
+    </section>`;
 }
