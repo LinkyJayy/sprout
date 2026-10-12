@@ -1,0 +1,176 @@
+// Tiny database layer with one async API over two backends:
+//   - PostgreSQL when DATABASE_URL is set (recommended on Railway)
+//   - SQLite (better-sqlite3) otherwise, stored in DATA_DIR, else an attached
+//     Railway Volume (RAILWAY_VOLUME_MOUNT_PATH), else ./data
+// SQL is written with `?` placeholders and converted for Postgres.
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
+
+const SCHEMA = (pg) => {
+  const id = pg ? "SERIAL PRIMARY KEY" : "INTEGER PRIMARY KEY AUTOINCREMENT";
+  return [
+    `CREATE TABLE IF NOT EXISTS users (
+      id ${id},
+      email TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      password_hash TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'reader',
+      created_at TEXT NOT NULL
+    )`,
+    // Guarantees there can only ever be one owner (the first account).
+    `CREATE UNIQUE INDEX IF NOT EXISTS users_single_owner ON users(role) WHERE role = 'owner'`,
+    `CREATE TABLE IF NOT EXISTS sessions (
+      token_hash TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      expires_at TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS articles (
+      id ${id},
+      slug TEXT NOT NULL UNIQUE,
+      title TEXT NOT NULL,
+      dek TEXT NOT NULL DEFAULT '',
+      body_md TEXT NOT NULL DEFAULT '',
+      category TEXT NOT NULL DEFAULT 'World',
+      cover_image TEXT NOT NULL DEFAULT '',
+      author TEXT NOT NULL DEFAULT '',
+      source TEXT NOT NULL DEFAULT 'original',
+      source_name TEXT NOT NULL DEFAULT '',
+      source_url TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'published',
+      published_at TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      created_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+    )`,
+    `CREATE INDEX IF NOT EXISTS articles_published ON articles(status, published_at)`,
+    // One row per user per local calendar day they read an article; drives reading streaks.
+    `CREATE TABLE IF NOT EXISTS reading_days (
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      day TEXT NOT NULL,
+      PRIMARY KEY (user_id, day)
+    )`,
+    `CREATE TABLE IF NOT EXISTS summaries (
+      article_id INTEGER PRIMARY KEY REFERENCES articles(id) ON DELETE CASCADE,
+      content TEXT NOT NULL,
+      body_hash TEXT NOT NULL,
+      model TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    )`,
+    // Small key/value store for owner-editable content (About page, app version, VAPID keys).
+    `CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id ${id},
+      endpoint TEXT NOT NULL UNIQUE,
+      p256dh TEXT NOT NULL,
+      auth TEXT NOT NULL,
+      user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at TEXT NOT NULL
+    )`,
+  ];
+};
+
+// Columns added after the first release. Each is added once if missing, so existing databases upgrade in place.
+const ADDED_COLUMNS = [
+  // 'news' for real news, 'sprout' for posts about the Sprout app itself.
+  ["articles", "section", "TEXT NOT NULL DEFAULT 'news'"],
+  // Set when a push notification has gone out, so an article never notifies twice.
+  // Backfill: articles that were already live when this column arrived count as notified.
+  ["articles", "notified_at", "TEXT", "UPDATE articles SET notified_at = published_at WHERE status = 'published'"],
+];
+
+async function migrate(db, columnsOf) {
+  for (const [table, column, ddl, backfill] of ADDED_COLUMNS) {
+    if ((await columnsOf(table)).includes(column)) continue;
+    await db.run(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`);
+    if (backfill) await db.run(backfill);
+  }
+  await db.run("CREATE INDEX IF NOT EXISTS articles_section ON articles(section, status, published_at)");
+}
+
+function toPg(sql) {
+  let i = 0;
+  return sql.replace(/\?/g, () => `$${++i}`);
+}
+
+async function createPg(url) {
+  const { default: pg } = await import("pg");
+  const ssl =
+    process.env.PGSSL === "disable" || /localhost|127\.0\.0\.1|\.railway\.internal/.test(url)
+      ? false
+      : { rejectUnauthorized: false };
+  const pool = new pg.Pool({ connectionString: url, ssl, max: 10 });
+  const db = {
+    kind: "postgres",
+    async all(sql, params = []) {
+      return (await pool.query(toPg(sql), params)).rows;
+    },
+    async get(sql, params = []) {
+      return (await pool.query(toPg(sql), params)).rows[0];
+    },
+    async run(sql, params = []) {
+      const r = await pool.query(toPg(sql), params);
+      return { changes: r.rowCount };
+    },
+  };
+  for (const stmt of SCHEMA(true)) await pool.query(stmt);
+  await migrate(db, async (table) =>
+    (await db.all("SELECT column_name FROM information_schema.columns WHERE table_name = ?", [table])).map((r) => r.column_name)
+  );
+  return db;
+}
+
+async function createSqlite() {
+  const { default: Database } = await import("better-sqlite3");
+  const dir = process.env.DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH || join(process.cwd(), "data");
+  if (process.env.RAILWAY_ENVIRONMENT && !process.env.DATA_DIR && !process.env.RAILWAY_VOLUME_MOUNT_PATH) {
+    console.warn(
+      "[sprout] WARNING: no database or volume configured. Data is stored on Railway's temporary disk and " +
+        "will be ERASED on every deploy. Add a Postgres service (set DATABASE_URL) or attach a Volume."
+    );
+  }
+  mkdirSync(dir, { recursive: true });
+  const sqlite = new Database(join(dir, "sprout.db"));
+  sqlite.pragma("journal_mode = WAL");
+  sqlite.pragma("foreign_keys = ON");
+  for (const stmt of SCHEMA(false)) sqlite.exec(stmt);
+  const db = {
+    kind: "sqlite",
+    async all(sql, params = []) {
+      return sqlite.prepare(sql).all(...params);
+    },
+    async get(sql, params = []) {
+      return sqlite.prepare(sql).get(...params);
+    },
+    async run(sql, params = []) {
+      const r = sqlite.prepare(sql).run(...params);
+      return { changes: r.changes };
+    },
+  };
+  await migrate(db, async (table) => sqlite.prepare(`PRAGMA table_info(${table})`).all().map((r) => r.name));
+  return db;
+}
+
+export const db = process.env.DATABASE_URL
+  ? await createPg(process.env.DATABASE_URL)
+  : await createSqlite();
+
+export const isUniqueViolation = (err) =>
+  err?.code === "23505" || err?.code === "SQLITE_CONSTRAINT_UNIQUE";
+
+export const now = () => new Date().toISOString();
+
+export async function getSetting(key, fallback = null) {
+  const row = await db.get("SELECT value FROM settings WHERE key = ?", [key]);
+  return row ? row.value : fallback;
+}
+
+export async function setSetting(key, value) {
+  await db.run(
+    "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+    [key, String(value)]
+  );
+}
