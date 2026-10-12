@@ -5,6 +5,9 @@ A clean, modern news app with AI summaries. It installs as a PWA and deploys to 
 - **Read freely.** You don't need an account to browse or read.
 - **AI summaries for members.** Signed-in readers get a one-tap, 15-second AI summary in plain language at the top of every article. Summaries are generated with Google Gemini and cached per article.
 - **Reading streaks.** Signed-in readers build a daily streak by reading at least one article a day, measured in their own timezone. A flame counter sits in the header, a toast celebrates each new day, and the Account page shows the current streak, a 7-day view, the longest streak and total days read.
+- **Sprout Updates.** A separate page at `/updates` for news about the app itself, such as new features and announcements. These posts never appear in the news feed or search, and they don't get AI summaries.
+- **Push notifications.** Anyone can tap the bell to be notified when a new story or update is published. Each article notifies once, the first time it goes live, and edits never re-notify. On iPhone and iPad, Sprout must be added to the Home Screen first.
+- **Editable About page.** `/about` shows what Sprout is, the current version, live stats and the latest update. The owner can edit the text and version number right on the page.
 - **Owner studio.** The **first account ever created** becomes the owner. Only the owner can:
   - **Import** stories from **BBC News, CNN, CBS News or The New York Times**. Pick an outlet and section and browse its live headlines, or paste an article link. The story opens in the editor for review before you publish, and it always links back to the original.
   - **Write** original articles from scratch in Markdown, with a live preview.
@@ -45,6 +48,8 @@ Open the app and click **Sign in → Create an account**. The first account beco
 | `GEMINI_API_KEY` | Enables AI summaries. |
 | `GEMINI_MODEL` | Optional model override (default `gemini-flash-latest`). |
 | `DATABASE_URL` | Use PostgreSQL. If unset, SQLite is used. |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | Optional push keys. If unset, a key pair is generated once and stored in the database. |
+| `VAPID_SUBJECT` | Optional contact for push services (default `mailto:<owner email>`). |
 | `DATA_DIR` | Where the SQLite file lives. Defaults to an attached Railway Volume, then `./data`. |
 
 ## Project layout
@@ -56,6 +61,8 @@ src/
   auth.js       Accounts (bcrypt), cookie sessions, first-account-is-owner
   sources.js    BBC / CNN / CBS / NYT feeds + article extraction (Readability)
   summarize.js  Gemini summaries with per-article caching
+  streaks.js    Daily reading streaks
+  push.js       Web Push notifications for new articles
 public/
   index.html, css/app.css, js/…   Vanilla-JS single-page app (no build step)
   sw.js, manifest.webmanifest     PWA

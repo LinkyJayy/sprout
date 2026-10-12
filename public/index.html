@@ -27,20 +27,36 @@
           <img src="/img/logo.png" alt="" width="28" height="32" />
           <span>Sprout</span>
         </a>
-        <nav class="header-actions" aria-label="Primary">
-          <a href="/search" class="icon-btn" data-link aria-label="Search" title="Search" data-icon="search"></a>
+        <nav class="main-nav" aria-label="Sections">
+          <a href="/" data-nav="news">News</a>
+          <a href="/updates" data-nav="updates">Updates</a>
+          <a href="/about" data-nav="about">About</a>
+        </nav>
+        <div class="header-actions">
+          <a href="/search" class="icon-btn hide-mobile" data-link aria-label="Search" title="Search" data-icon="search"></a>
+          <button class="icon-btn" id="push-toggle" type="button" hidden></button>
           <button class="icon-btn" id="theme-toggle" type="button" aria-label="Toggle theme" title="Toggle theme"></button>
           <div id="account-slot"></div>
-        </nav>
+        </div>
       </div>
     </header>
     <main id="main" tabindex="-1"></main>
     <footer class="site-footer">
       <div class="container footer-inner">
         <span class="brand brand-sm"><img src="/img/logo.png" alt="" width="18" height="20" /> Sprout</span>
-        <span class="muted">News, freshly grown.</span>
+        <nav class="footer-links" aria-label="Footer">
+          <a href="/updates">Sprout Updates</a>
+          <a href="/about">About</a>
+          <span class="faint" id="footer-version"></span>
+        </nav>
       </div>
     </footer>
+    <nav class="tab-bar" aria-label="Sections">
+      <a href="/" data-nav="news"><span data-icon="news"></span>News</a>
+      <a href="/updates" data-nav="updates"><span data-icon="sprout"></span>Updates</a>
+      <a href="/search" data-nav="search"><span data-icon="search"></span>Search</a>
+      <a href="/about" data-nav="about"><span data-icon="info"></span>About</a>
+    </nav>
     <div id="toasts" aria-live="polite"></div>
     <script type="module" src="/js/app.js"></script>
   </body>

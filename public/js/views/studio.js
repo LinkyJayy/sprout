@@ -8,7 +8,7 @@ let selectedSection = "top";
 
 const SOURCE_MARKS = { bbc: "BBC", cnn: "CNN", cbs: "CBS", nyt: "NYT" };
 
-export async function studioView(main, { params, isCurrent }) {
+export async function studioView(main, { params, query, isCurrent }) {
   if (!state.user) return navigate(`/signin?next=${encodeURIComponent(location.pathname)}`, { replace: true });
   if (!isOwner()) {
     main.innerHTML = `<div class="container page"><div class="empty"><img src="/img/logo.png" alt="" /><h2>Owner only</h2><p>The Studio is reserved for the owner of this Sprout.</p><a class="btn" href="/">Back to the news</a></div></div>`;
@@ -42,7 +42,7 @@ export async function studioView(main, { params, isCurrent }) {
   }
   const draft = pendingDraft;
   pendingDraft = null;
-  return editor(body, draft);
+  return editor(body, draft || (query.get("section") === "sprout" ? { section: "sprout" } : null));
 }
 
 // ───────── Articles list ─────────
@@ -65,6 +65,7 @@ async function articlesTab(body, isCurrent) {
             <h4>${esc(a.title)}</h4>
             <div class="meta">
               ${a.status === "draft" ? `<span class="badge">Draft</span>` : `<span class="badge badge-accent">Live</span>`}
+              ${a.section === "sprout" ? `<span class="badge">${icon("sprout")}&nbsp;App update</span>` : ""}
               <span>${esc(a.category)}</span><span class="dot"></span><span>${esc(sourceLabel(a))}</span><span class="dot"></span><span>${esc(timeAgo(a.publishedAt))}</span>
             </div>
           </div>
@@ -228,13 +229,20 @@ function editor(body, existing) {
       </div>
       <aside class="editor-side">
         <div class="panel panel-pad" style="display:grid;gap:14px">
+          <div class="field"><label for="section">Post to</label>
+            <select class="select" id="section" name="section" ${imported ? "disabled" : ""}>
+              <option value="news" ${a.section !== "sprout" ? "selected" : ""}>News feed</option>
+              <option value="sprout" ${a.section === "sprout" ? "selected" : ""}>Sprout Updates</option>
+            </select>
+            ${imported ? `<span class="hint">Imported stories always go to the news feed.</span>` : ""}
+          </div>
           <div class="field"><label for="status">Status</label>
             <select class="select" id="status" name="status">
               <option value="published" ${a.status !== "draft" ? "selected" : ""}>Published</option>
               <option value="draft" ${a.status === "draft" ? "selected" : ""}>Draft</option>
             </select>
           </div>
-          <div class="field"><label for="category">Category</label>
+          <div class="field" id="category-field"><label for="category">Category</label>
             <select class="select" id="category" name="category">${cats.map((c) => `<option ${c === category ? "selected" : ""}>${esc(c)}</option>`).join("")}</select>
           </div>
           <div class="field"><label for="author">Author</label><input class="input" id="author" name="author" maxlength="200" value="${esc(a.author ?? (imported ? "" : state.user.name))}" /></div>
@@ -248,6 +256,7 @@ function editor(body, existing) {
           }
           <p class="form-error" role="alert"></p>
           <button class="btn btn-primary btn-block" type="submit">${editing ? "Save changes" : "Publish"}</button>
+          <span class="hint" id="notify-hint">${icon("bell")} Publishing sends a notification to everyone who turned them on.</span>
           ${editing ? `<a class="btn btn-ghost btn-block" href="/studio">Cancel</a>` : ""}
         </div>
       </aside>
@@ -258,7 +267,16 @@ function editor(body, existing) {
   const preview = form.querySelector("#preview");
   const submit = form.querySelector("button[type=submit]");
   const statusSel = form.querySelector("#status");
+  const sectionSel = form.querySelector("#section");
+  const syncSection = () => {
+    // Sprout updates aren't filed under a news category.
+    form.querySelector("#category-field").hidden = sectionSel.value === "sprout";
+  };
+  sectionSel.addEventListener("change", syncSection);
+  syncSection();
   const syncSubmitLabel = () => {
+    // Only a first-time publish notifies subscribers.
+    form.querySelector("#notify-hint").hidden = statusSel.value === "draft" || (editing && a.notified_at);
     if (!editing) submit.textContent = statusSel.value === "draft" ? "Save draft" : "Publish";
   };
   statusSel.addEventListener("change", syncSubmitLabel);
@@ -298,6 +316,7 @@ function editor(body, existing) {
       dek: f.get("dek"),
       body_md: f.get("body_md"),
       status: f.get("status"),
+      section: imported ? "news" : f.get("section"),
       category: f.get("category"),
       author: f.get("author"),
       cover_image: f.get("cover_image"),
@@ -314,7 +333,7 @@ function editor(body, existing) {
       const { article } = editing
         ? await api(`/studio/articles/${a.id}`, { method: "PUT", body: payload })
         : await api("/studio/articles", { method: "POST", body: payload });
-      toast(article.status === "draft" ? "Draft saved" : editing ? "Changes saved" : "Story published");
+      toast(article.status === "draft" ? "Draft saved" : editing ? "Changes saved" : article.section === "sprout" ? "Update published" : "Story published");
       navigate(`/article/${encodeURIComponent(article.slug)}`);
     } catch (err) {
       error.textContent = err.message;

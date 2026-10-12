@@ -1,5 +1,5 @@
 // Sprout service worker: offline app shell + network-first API with cached fallback.
-const VERSION = "sprout-v2";
+const VERSION = "sprout-v3";
 const SHELL = [
   "/",
   "/css/app.css",
@@ -11,6 +11,9 @@ const SHELL = [
   "/js/views/article.js",
   "/js/views/auth.js",
   "/js/views/studio.js",
+  "/js/views/updates.js",
+  "/js/views/about.js",
+  "/js/push.js",
   "/img/logo.png",
   "/icons/icon-192.png",
   "/icons/favicon-32.png",
@@ -78,6 +81,37 @@ self.addEventListener("fetch", (event) => {
         })
         .catch(() => cached);
       return cached || network;
+    })
+  );
+});
+
+// ───────── Push notifications ─────────
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { title: "Sprout", body: event.data?.text() };
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title || "Sprout", {
+      body: data.body || "",
+      icon: "/icons/icon-192.png",
+      badge: "/icons/badge-96.png",
+      tag: data.tag,
+      data: { url: data.url || "/" },
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = new URL(event.notification.data?.url || "/", self.location.origin).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((wins) => {
+      const win = wins.find((w) => w.url.startsWith(self.location.origin));
+      if (win) return win.navigate(url).then((w) => (w || win).focus());
+      return self.clients.openWindow(url);
     })
   );
 });

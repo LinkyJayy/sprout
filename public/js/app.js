@@ -1,9 +1,12 @@
 import { api, state, isOwner, localDay } from "./api.js";
-import { esc, icon } from "./ui.js";
+import { esc, icon, toast } from "./ui.js";
+import { currentSubscription, disablePush, enablePush, pushSupported } from "./push.js";
 import { homeView, searchView } from "./views/home.js";
 import { articleView } from "./views/article.js";
 import { signInView, signUpView, accountView } from "./views/auth.js";
 import { studioView } from "./views/studio.js";
+import { updatesView } from "./views/updates.js";
+import { aboutView } from "./views/about.js";
 
 const main = document.getElementById("main");
 
@@ -11,6 +14,8 @@ const main = document.getElementById("main");
 const routes = [
   [/^\/$/, homeView],
   [/^\/search$/, searchView],
+  [/^\/updates$/, updatesView],
+  [/^\/about$/, aboutView],
   [/^\/article\/([^/]+)$/, articleView],
   [/^\/signin$/, signInView],
   [/^\/signup$/, signUpView],
@@ -25,6 +30,7 @@ export async function render() {
   const query = new URLSearchParams(search);
   const match = routes.map(([re, view]) => [pathname.match(re), view]).find(([m]) => m);
   document.querySelectorAll(".header-actions [data-link]").forEach((a) => a.classList.toggle("active", a.getAttribute("href") === pathname));
+  setActiveNav({ "/": "news", "/updates": "updates", "/about": "about", "/search": "search" }[pathname] || (pathname.startsWith("/article/") ? "news" : ""));
   if (!match) return notFound();
   const [m, view] = match;
   try {
@@ -34,6 +40,16 @@ export async function render() {
     console.error(err);
     main.innerHTML = `<div class="container page"><div class="empty"><img src="/img/logo.png" alt="" /><h2>Couldn't load this page</h2><p>${esc(err.message)}</p><a class="btn" href="/">Go home</a></div></div>`;
   }
+}
+
+// Highlights the current section in the header nav and the mobile tab bar.
+export function setActiveNav(key) {
+  document.querySelectorAll("[data-nav]").forEach((a) => {
+    const on = a.dataset.nav === key;
+    a.classList.toggle("active", on);
+    if (on) a.setAttribute("aria-current", "page");
+    else a.removeAttribute("aria-current");
+  });
 }
 
 function notFound() {
@@ -77,6 +93,41 @@ themeBtn.addEventListener("click", () => {
 });
 applyTheme(document.documentElement.getAttribute("data-theme") || "dark");
 document.querySelectorAll("[data-icon]").forEach((el) => (el.innerHTML = icon(el.dataset.icon)));
+
+// ───────── Push notifications ─────────
+const pushBtn = document.getElementById("push-toggle");
+function renderPush(on) {
+  pushBtn.hidden = false;
+  pushBtn.classList.toggle("active", on);
+  pushBtn.innerHTML = icon(on ? "bellOn" : "bell");
+  const label = on ? "Turn off new-story notifications" : "Get notified about new stories";
+  pushBtn.setAttribute("aria-label", label);
+  pushBtn.title = label;
+  pushBtn.setAttribute("aria-pressed", String(on));
+}
+if (pushSupported()) {
+  currentSubscription()
+    .then((sub) => renderPush(Boolean(sub) && Notification.permission === "granted"))
+    .catch(() => renderPush(false));
+  pushBtn.addEventListener("click", async () => {
+    pushBtn.disabled = true;
+    try {
+      if (pushBtn.classList.contains("active")) {
+        await disablePush();
+        renderPush(false);
+        toast("Notifications turned off");
+      } else {
+        await enablePush();
+        renderPush(true);
+        toast("You'll be notified when new stories are published");
+      }
+    } catch (err) {
+      toast(err.message, "error");
+    } finally {
+      pushBtn.disabled = false;
+    }
+  });
+}
 
 // ───────── Account slot ─────────
 let closeMenu = null;
@@ -170,6 +221,7 @@ window.addEventListener("beforeinstallprompt", (e) => {
   try {
     state.config = await api("/config");
     state.user = state.config.user;
+    document.getElementById("footer-version").textContent = `v${state.config.version}`;
   } catch {
     state.config = { hasOwner: true, aiEnabled: false, categories: [] };
   }

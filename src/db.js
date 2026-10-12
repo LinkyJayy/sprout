@@ -57,8 +57,39 @@ const SCHEMA = (pg) => {
       model TEXT NOT NULL,
       created_at TEXT NOT NULL
     )`,
+    // Small key/value store for owner-editable content (About page, app version, VAPID keys).
+    `CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id ${id},
+      endpoint TEXT NOT NULL UNIQUE,
+      p256dh TEXT NOT NULL,
+      auth TEXT NOT NULL,
+      user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at TEXT NOT NULL
+    )`,
   ];
 };
+
+// Columns added after the first release. Each is added once if missing, so existing databases upgrade in place.
+const ADDED_COLUMNS = [
+  // 'news' for real news, 'sprout' for posts about the Sprout app itself.
+  ["articles", "section", "TEXT NOT NULL DEFAULT 'news'"],
+  // Set when a push notification has gone out, so an article never notifies twice.
+  // Backfill: articles that were already live when this column arrived count as notified.
+  ["articles", "notified_at", "TEXT", "UPDATE articles SET notified_at = published_at WHERE status = 'published'"],
+];
+
+async function migrate(db, columnsOf) {
+  for (const [table, column, ddl, backfill] of ADDED_COLUMNS) {
+    if ((await columnsOf(table)).includes(column)) continue;
+    await db.run(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`);
+    if (backfill) await db.run(backfill);
+  }
+  await db.run("CREATE INDEX IF NOT EXISTS articles_section ON articles(section, status, published_at)");
+}
 
 function toPg(sql) {
   let i = 0;
@@ -86,6 +117,9 @@ async function createPg(url) {
     },
   };
   for (const stmt of SCHEMA(true)) await pool.query(stmt);
+  await migrate(db, async (table) =>
+    (await db.all("SELECT column_name FROM information_schema.columns WHERE table_name = ?", [table])).map((r) => r.column_name)
+  );
   return db;
 }
 
@@ -103,7 +137,7 @@ async function createSqlite() {
   sqlite.pragma("journal_mode = WAL");
   sqlite.pragma("foreign_keys = ON");
   for (const stmt of SCHEMA(false)) sqlite.exec(stmt);
-  return {
+  const db = {
     kind: "sqlite",
     async all(sql, params = []) {
       return sqlite.prepare(sql).all(...params);
@@ -116,6 +150,8 @@ async function createSqlite() {
       return { changes: r.changes };
     },
   };
+  await migrate(db, async (table) => sqlite.prepare(`PRAGMA table_info(${table})`).all().map((r) => r.name));
+  return db;
 }
 
 export const db = process.env.DATABASE_URL
@@ -126,3 +162,15 @@ export const isUniqueViolation = (err) =>
   err?.code === "23505" || err?.code === "SQLITE_CONSTRAINT_UNIQUE";
 
 export const now = () => new Date().toISOString();
+
+export async function getSetting(key, fallback = null) {
+  const row = await db.get("SELECT value FROM settings WHERE key = ?", [key]);
+  return row ? row.value : fallback;
+}
+
+export async function setSetting(key, value) {
+  await db.run(
+    "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+    [key, String(value)]
+  );
+}

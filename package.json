@@ -27,6 +27,7 @@
     "marked": "^18.1.0",
     "pg": "^8.23.1",
     "sanitize-html": "^2.18.0",
-    "turndown": "^7.2.4"
+    "turndown": "^7.2.4",
+    "web-push": "^3.6.7"
   }
 }

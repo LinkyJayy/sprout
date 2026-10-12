@@ -1,5 +1,5 @@
 import { api, state, isOwner, localDay } from "../api.js";
-import { setStreak } from "../app.js";
+import { setActiveNav, setStreak } from "../app.js";
 import { esc, icon, fullDate, timeAgo, toast, sourceLabel } from "../ui.js";
 
 // Renders the model's plain-text summary (lead sentence + "- " bullets) as safe HTML.
@@ -72,12 +72,18 @@ export async function articleView(main, { params, isCurrent }) {
   document.title = `${a.title} · Sprout`;
 
   const fromSource = a.source && a.source !== "original";
+  const isUpdate = a.section === "sprout";
+  if (isUpdate) setActiveNav("updates");
   main.innerHTML = `
     <article class="container narrow article fade-in">
-      <a class="back" href="/">${icon("back")} All news</a>
+      ${isUpdate ? `<a class="back" href="/updates">${icon("back")} All Sprout updates</a>` : `<a class="back" href="/">${icon("back")} All news</a>`}
       <header class="article-head">
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-          <a class="tag" href="/?category=${encodeURIComponent(a.category)}">${esc(a.category)}</a>
+          ${
+            isUpdate
+              ? `<a class="updates-badge" href="/updates">${icon("sprout")} Sprout Update</a>`
+              : `<a class="tag" href="/?category=${encodeURIComponent(a.category)}">${esc(a.category)}</a>`
+          }
           ${a.status === "draft" ? `<span class="badge">Draft</span>` : ""}
         </div>
         <h1>${esc(a.title)}</h1>
@@ -95,7 +101,7 @@ export async function articleView(main, { params, isCurrent }) {
           </div>
         </div>
       </header>
-      <div id="ai-slot">${aiCardHTML(slug, summary)}</div>
+      ${isUpdate ? "" : `<div id="ai-slot">${aiCardHTML(slug, summary)}</div>`}
       ${a.coverImage ? `<figure class="cover" style="margin-left:0;margin-right:0"><img src="${esc(a.coverImage)}" alt="" referrerpolicy="no-referrer" data-fallback /></figure>` : ""}
       <div class="prose">${a.html}</div>
       ${
