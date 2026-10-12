@@ -1,5 +1,10 @@
 // Sprout service worker: offline app shell + network-first API with cached fallback.
-const VERSION = "sprout-v4";
+// The server replaces __BUILD_ID__ with a hash of the app's files, so every deploy produces a new
+// service worker. The browser installs it in the background and the page offers an "Update" button.
+const BUILD = "__BUILD_ID__";
+const VERSION = `sprout-${BUILD}`;
+// Caches from versions before the update prompt existed ("sprout-v1" ... "sprout-v4").
+const isLegacyCache = (key) => /^sprout-v\d+$/.test(key);
 const SHELL = [
   "/",
   "/css/app.css",
@@ -14,6 +19,7 @@ const SHELL = [
   "/js/views/updates.js",
   "/js/views/about.js",
   "/js/push.js",
+  "/js/updater.js",
   "/img/logo-v2.png",
   "/icons/icon-192-v2.png",
   "/icons/favicon-32-v2.png",
@@ -23,16 +29,39 @@ const SHELL = [
 ];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  event.waitUntil(
+    (async () => {
+      const cache = await caches.open(VERSION);
+      // cache: "reload" skips the browser's HTTP cache so the new version never precaches stale files.
+      await cache.addAll(SHELL.map((url) => new Request(url, { cache: "reload" })));
+      // Pages from before the update prompt can't show it, so move them over right away (one time only).
+      // Otherwise the new version waits until the reader taps "Update".
+      if ((await caches.keys()).some(isLegacyCache)) await self.skipWaiting();
+    })()
+  );
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches
-      .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== VERSION).map((k) => caches.delete(k))))
-      .then(() => self.clients.claim())
-  );
+  let migrating = false;
+  const activation = (async () => {
+    const keys = await caches.keys();
+    migrating = keys.some(isLegacyCache);
+    await Promise.all(keys.filter((k) => k !== VERSION).map((k) => caches.delete(k)));
+    await self.clients.claim();
+  })();
+  event.waitUntil(activation);
+  // Reload pages still running the old code so they pick up the new version. This must happen after
+  // activation finishes: the reload's requests wait for this worker to be active, so awaiting the reload
+  // inside waitUntil would deadlock.
+  activation.then(async () => {
+    if (!migrating) return;
+    const wins = await self.clients.matchAll({ type: "window" });
+    wins.forEach((w) => w.navigate(w.url).catch(() => {}));
+  });
 });
 
 async function networkFirst(request, fallbackUrl) {

@@ -1,8 +1,8 @@
 import express from "express";
 import compression from "compression";
 import cookieParser from "cookie-parser";
-import { randomBytes } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { createHash, randomBytes } from "node:crypto";
+import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { marked } from "marked";
@@ -160,7 +160,7 @@ async function appVersion() {
 }
 
 // ---------- system ----------
-app.get("/api/health", (_req, res) => res.json({ ok: true, db: db.kind }));
+app.get("/api/health", (_req, res) => res.json({ ok: true, db: db.kind, build: BUILD_ID }));
 
 app.get(
   "/api/config",
@@ -444,9 +444,27 @@ app.use("/api", (_req, res) => res.status(404).json({ error: "Not found." }));
 
 // ---------- static + SPA ----------
 const pub = join(root, "public");
+// A fingerprint of every file the app ships. It changes whenever a deploy changes any of them,
+// which makes the service worker change too, so browsers notice the update and offer it to readers.
+function buildId(dir) {
+  const hash = createHash("sha256");
+  const walk = (d) => {
+    for (const entry of readdirSync(d, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      const path = join(d, entry.name);
+      if (entry.isDirectory()) walk(path);
+      else if (path !== join(dir, "sw.js")) hash.update(path.slice(dir.length)).update(readFileSync(path));
+    }
+  };
+  walk(dir);
+  hash.update(readFileSync(join(dir, "sw.js")));
+  return hash.digest("hex").slice(0, 12);
+}
+const BUILD_ID = buildId(pub);
+const SW_SOURCE = readFileSync(join(pub, "sw.js"), "utf8").replaceAll("__BUILD_ID__", BUILD_ID);
+
 app.get("/sw.js", (_req, res) => {
-  res.set({ "Cache-Control": "no-cache", "Service-Worker-Allowed": "/" });
-  res.sendFile(join(pub, "sw.js"));
+  res.set({ "Cache-Control": "no-cache", "Service-Worker-Allowed": "/", "Content-Type": "text/javascript; charset=utf-8" });
+  res.send(SW_SOURCE);
 });
 app.use(
   express.static(pub, {

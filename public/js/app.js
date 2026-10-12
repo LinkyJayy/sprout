@@ -1,6 +1,7 @@
 import { api, state, isOwner, localDay } from "./api.js";
 import { esc, icon, toast } from "./ui.js";
 import { currentSubscription, disablePush, enablePush, pushSupported } from "./push.js";
+import { setupUpdates } from "./updater.js";
 import { homeView, searchView } from "./views/home.js";
 import { articleView } from "./views/article.js";
 import { signInView, signUpView, accountView } from "./views/auth.js";
@@ -207,9 +208,7 @@ export function setUser(user) {
 }
 
 // ───────── PWA ─────────
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
-}
+window.addEventListener("load", () => setupUpdates().catch(() => {}));
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();
   state.installPrompt = e;
