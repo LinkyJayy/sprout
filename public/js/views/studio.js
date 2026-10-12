@@ -11,7 +11,7 @@ const SOURCE_MARKS = { bbc: "BBC", cnn: "CNN", cbs: "CBS", nyt: "NYT" };
 export async function studioView(main, { params, query, isCurrent }) {
   if (!state.user) return navigate(`/signin?next=${encodeURIComponent(location.pathname)}`, { replace: true });
   if (!isOwner()) {
-    main.innerHTML = `<div class="container page"><div class="empty"><img src="/img/logo.png" alt="" /><h2>Owner only</h2><p>The Studio is reserved for the owner of this Sprout.</p><a class="btn" href="/">Back to the news</a></div></div>`;
+    main.innerHTML = `<div class="container page"><div class="empty"><img src="/img/logo-v2.png" alt="" /><h2>Owner only</h2><p>The Studio is reserved for the owner of this Sprout.</p><a class="btn" href="/">Back to the news</a></div></div>`;
     return;
   }
   const sub = params[0] || "";
@@ -51,7 +51,7 @@ async function articlesTab(body, isCurrent) {
   const { articles } = await api("/studio/articles");
   if (!isCurrent()) return;
   if (!articles.length) {
-    body.innerHTML = `<div class="empty fade-in"><img src="/img/logo.png" alt="" /><h2>No articles yet</h2><p>Start by writing your own story or importing one from a trusted outlet.</p><div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center"><a class="btn btn-primary" href="/studio/new">${icon("pen")} Write article</a><a class="btn" href="/studio/import">${icon("download")} Import article</a></div></div>`;
+    body.innerHTML = `<div class="empty fade-in"><img src="/img/logo-v2.png" alt="" /><h2>No articles yet</h2><p>Start by writing your own story or importing one from a trusted outlet.</p><div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center"><a class="btn btn-primary" href="/studio/new">${icon("pen")} Write article</a><a class="btn" href="/studio/import">${icon("download")} Import article</a></div></div>`;
     return;
   }
   body.innerHTML = `

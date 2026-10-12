@@ -38,7 +38,7 @@ export async function render() {
   } catch (err) {
     if (id !== renderId) return;
     console.error(err);
-    main.innerHTML = `<div class="container page"><div class="empty"><img src="/img/logo.png" alt="" /><h2>Couldn't load this page</h2><p>${esc(err.message)}</p><a class="btn" href="/">Go home</a></div></div>`;
+    main.innerHTML = `<div class="container page"><div class="empty"><img src="/img/logo-v2.png" alt="" /><h2>Couldn't load this page</h2><p>${esc(err.message)}</p><a class="btn" href="/">Go home</a></div></div>`;
   }
 }
 
@@ -54,7 +54,7 @@ export function setActiveNav(key) {
 
 function notFound() {
   document.title = "Not found · Sprout";
-  main.innerHTML = `<div class="container page"><div class="empty fade-in"><img src="/img/logo.png" alt="" /><h2>Nothing grew here</h2><p>The page you're looking for doesn't exist.</p><a class="btn btn-primary" href="/">Back to the news</a></div></div>`;
+  main.innerHTML = `<div class="container page"><div class="empty fade-in"><img src="/img/logo-v2.png" alt="" /><h2>Nothing grew here</h2><p>The page you're looking for doesn't exist.</p><a class="btn btn-primary" href="/">Back to the news</a></div></div>`;
 }
 
 export function navigate(url, { replace = false } = {}) {

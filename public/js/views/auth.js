@@ -12,7 +12,7 @@ function authShell({ title, sub, notice = "", form, alt }) {
     <div class="auth-wrap">
       <div class="auth-card fade-in">
         <div>
-          <img class="logo" src="/img/logo.png" alt="Sprout" />
+          <img class="logo" src="/img/logo-v2.png" alt="Sprout" />
           <h1>${title}</h1>
         </div>
         <p class="sub">${sub}</p>

@@ -34,20 +34,20 @@ const skeletonGrid = () => `
 
 function emptyState(category) {
   if (category) {
-    return `<div class="empty fade-in"><img src="/img/logo.png" alt="" /><h2>No ${esc(category)} stories yet</h2><p>Check back soon — new stories are always sprouting.</p><a class="btn" href="/">See all news</a></div>`;
+    return `<div class="empty fade-in"><img src="/img/logo-v2.png" alt="" /><h2>No ${esc(category)} stories yet</h2><p>Check back soon — new stories are always sprouting.</p><a class="btn" href="/">See all news</a></div>`;
   }
   if (isOwner()) {
-    return `<div class="empty fade-in"><img src="/img/logo.png" alt="" /><h2>Your newsroom is ready</h2><p>Publish your first story — write one from scratch or import from BBC, CNN, CBS News or The New York Times.</p><div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center"><a class="btn btn-primary" href="/studio/new">${icon("pen")} Write article</a><a class="btn" href="/studio/import">${icon("download")} Import article</a></div></div>`;
+    return `<div class="empty fade-in"><img src="/img/logo-v2.png" alt="" /><h2>Your newsroom is ready</h2><p>Publish your first story — write one from scratch or import from BBC, CNN, CBS News or The New York Times.</p><div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center"><a class="btn btn-primary" href="/studio/new">${icon("pen")} Write article</a><a class="btn" href="/studio/import">${icon("download")} Import article</a></div></div>`;
   }
   if (!state.config?.hasOwner) {
-    return `<div class="empty fade-in"><img src="/img/logo.png" alt="" /><h2>Welcome to Sprout</h2><p>This newsroom hasn't been set up yet. The first account created becomes the owner and can publish stories.</p><a class="btn btn-primary" href="/signup">Create the owner account</a></div>`;
+    return `<div class="empty fade-in"><img src="/img/logo-v2.png" alt="" /><h2>Welcome to Sprout</h2><p>This newsroom hasn't been set up yet. The first account created becomes the owner and can publish stories.</p><a class="btn btn-primary" href="/signup">Create the owner account</a></div>`;
   }
-  return `<div class="empty fade-in"><img src="/img/logo.png" alt="" /><h2>No stories yet</h2><p>The first headlines are on their way. Check back soon.</p></div>`;
+  return `<div class="empty fade-in"><img src="/img/logo-v2.png" alt="" /><h2>No stories yet</h2><p>The first headlines are on their way. Check back soon.</p></div>`;
 }
 
 function installBanner() {
   if (!state.installPrompt) return "";
-  return `<div class="install-banner fade-in" id="install-banner"><div class="l"><img src="/icons/icon-192.png" alt="" /><div><strong>Install Sprout</strong><div class="muted">Add it to your home screen for a faster, app-like experience.</div></div></div><button class="btn btn-sm btn-primary" type="button" id="install-btn">Install</button></div>`;
+  return `<div class="install-banner fade-in" id="install-banner"><div class="l"><img src="/icons/icon-192-v2.png" alt="" /><div><strong>Install Sprout</strong><div class="muted">Add it to your home screen for a faster, app-like experience.</div></div></div><button class="btn btn-sm btn-primary" type="button" id="install-btn">Install</button></div>`;
 }
 
 function wireInstall(root) {

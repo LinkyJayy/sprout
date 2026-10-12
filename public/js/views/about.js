@@ -16,7 +16,7 @@ function renderView(main, about) {
   main.innerHTML = `
     <div class="container narrow page fade-in">
       <header class="about-hero">
-        <img class="about-logo" src="/img/logo.png" alt="" />
+        <img class="about-logo" src="/img/logo-v2.png" alt="" />
         <div class="about-id">
           <h1>Sprout</h1>
           <p class="muted">News, freshly grown.</p>

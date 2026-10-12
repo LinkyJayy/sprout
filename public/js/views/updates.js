@@ -39,7 +39,7 @@ export async function updatesView(main, { isCurrent }) {
   const { articles, hasMore } = await load(0);
   if (!isCurrent()) return;
   if (!articles.length) {
-    list.innerHTML = `<div class="empty fade-in"><img src="/img/logo.png" alt="" /><h2>No updates yet</h2><p>News about the Sprout app will appear here.</p>${
+    list.innerHTML = `<div class="empty fade-in"><img src="/img/logo-v2.png" alt="" /><h2>No updates yet</h2><p>News about the Sprout app will appear here.</p>${
       isOwner() ? `<a class="btn btn-primary" href="/studio/new?section=sprout">${icon("plus")} Post the first update</a>` : ""
     }</div>`;
     return;

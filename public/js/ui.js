@@ -58,7 +58,7 @@ export const fullDate = (iso) =>
     : "";
 
 export function media(src, cls = "") {
-  if (!src) return `<div class="media placeholder ${cls}"><img src="/img/logo.png" alt="" /></div>`;
+  if (!src) return `<div class="media placeholder ${cls}"><img src="/img/logo-v2.png" alt="" /></div>`;
   return `<div class="media ${cls}"><img src="${esc(src)}" alt="" loading="lazy" referrerpolicy="no-referrer" data-fallback /></div>`;
 }
 
@@ -70,7 +70,7 @@ document.addEventListener(
     if (img.tagName === "IMG" && img.hasAttribute("data-fallback")) {
       img.removeAttribute("data-fallback");
       img.parentElement.classList.add("placeholder");
-      img.src = "/img/logo.png";
+      img.src = "/img/logo-v2.png";
     }
   },
   true

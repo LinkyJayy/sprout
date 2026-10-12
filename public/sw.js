@@ -1,5 +1,5 @@
 // Sprout service worker: offline app shell + network-first API with cached fallback.
-const VERSION = "sprout-v3";
+const VERSION = "sprout-v4";
 const SHELL = [
   "/",
   "/css/app.css",
@@ -14,9 +14,9 @@ const SHELL = [
   "/js/views/updates.js",
   "/js/views/about.js",
   "/js/push.js",
-  "/img/logo.png",
-  "/icons/icon-192.png",
-  "/icons/favicon-32.png",
+  "/img/logo-v2.png",
+  "/icons/icon-192-v2.png",
+  "/icons/favicon-32-v2.png",
   "/manifest.webmanifest",
   "/fonts/geist-mono-latin-600-normal.woff2",
   "/fonts/geist-mono-latin-700-normal.woff2",
@@ -96,8 +96,8 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     self.registration.showNotification(data.title || "Sprout", {
       body: data.body || "",
-      icon: "/icons/icon-192.png",
-      badge: "/icons/badge-96.png",
+      icon: "/icons/icon-192-v2.png",
+      badge: "/icons/badge-96-v2.png",
       tag: data.tag,
       data: { url: data.url || "/" },
     })
